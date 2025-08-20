@@ -1,7 +1,11 @@
-const express = require("express");
-const app = express();
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+import express from "express";
+import Stripe from "stripe";
+import cors from "cors";
 
+const app = express();
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+app.use(cors());
 app.use(express.json());
 
 app.post("/create-checkout-session", async (req, res) => {
@@ -13,24 +17,25 @@ app.post("/create-checkout-session", async (req, res) => {
           price_data: {
             currency: "eur",
             product_data: {
-              name: "Flyer",
+              name: "Flyer A5",
             },
-            unit_amount: 1000, // Precio en céntimos: 1000 = 10,00€
+            unit_amount: 1000, // precio en céntimos (10,00€)
           },
           quantity: 1,
         },
       ],
       mode: "payment",
-      automatic_tax: { enabled: true }, // Stripe aplica IVA automáticamente
-      success_url: `${process.env.BASE_URL}/success.html`,
-      cancel_url: `${process.env.BASE_URL}/cancel.html`,
+      automatic_tax: { enabled: true }, // ✅ para que Stripe Tax calcule el IVA
+      success_url: `${process.env.BASE_URL}/success`,
+      cancel_url: `${process.env.BASE_URL}/cancel`,
     });
 
-    res.json({ url: session.url });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.json({ id: session.id });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Servidor funcionando en puerto ${port}`));
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
