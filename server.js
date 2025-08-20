@@ -1,41 +1,44 @@
-import express from "express";
-import Stripe from "stripe";
-import cors from "cors";
+// server.js (mínimo para diagnosticar)
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const Stripe = require('stripe');
 
 const app = express();
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
 app.use(cors());
 app.use(express.json());
 
-app.post("/create-checkout-session", async (req, res) => {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Salud
+app.get('/', (_, res) => res.send('OK 👍 Backend Flyers activo (demo)'));
+
+// Ignora la configuración del front y crea SIEMPRE una sesión de 10,00 €
+app.post('/create-checkout-session', async (req, res) => {
   try {
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price_data: {
-            currency: "eur",
-            product_data: {
-              name: "Flyer A5",
-            },
-            unit_amount: 1000, // precio en céntimos (10,00€)
-          },
-          quantity: 1,
+      mode: 'payment',
+      currency: 'eur',
+      line_items: [{
+        price_data: {
+          currency: 'eur',
+          product_data: { name: 'Prueba Flyers (demo 10€)' },
+          unit_amount: 1000          // 10,00 €
         },
-      ],
-      mode: "payment",
-      automatic_tax: { enabled: true }, // ✅ para que Stripe Tax calcule el IVA
-      success_url: `${process.env.BASE_URL}/success`,
-      cancel_url: `${process.env.BASE_URL}/cancel`,
+        quantity: 1
+      }],
+      // SIN impuestos/IVA para aislar el problema
+      // automatic_tax: { enabled: true },
+      success_url: `${process.env.BASE_URL}/gracias?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.BASE_URL}/flyers?cancelled=1`
     });
 
-    res.json({ id: session.id });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
+    return res.json({ url: session.url });
+  } catch (e) {
+    console.error('❌ Error Checkout minimal:', e?.message || e);
+    return res.status(500).json({ error: e?.message || 'Fallo creando la sesión' });
   }
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
+const port = process.env.PORT || 4242;
+app.listen(port, () => console.log(`Servidor mínimo Stripe en :${port}`));
